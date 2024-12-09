@@ -1,5 +1,6 @@
+use core::num;
 use std::hint::black_box;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion, BenchmarkGroup, BenchmarkId};
 
 use rand_core::{OsRng, RngCore};
 
@@ -520,60 +521,42 @@ fn verify_benchmark(c: &mut Criterion) {
 
   let mut test_cases = vec![];
   // j: number of tx inputs
-  for j in 1..=MAX_NUM_PATHS {
+  let mut j = 1;
+  while j <= MAX_NUM_PATHS {
     let (paths, root) = random_paths_including_outputs(TARGET_LAYERS, &output[..j]);
     let branches = Branches::new(paths).unwrap();
     let blinded_branches = blind_branches(branches, &output_blind[..j]);
     let member_proof = Fcmp::prove(&mut OsRng, FCMP_PARAMS(), blinded_branches).unwrap();
     let fcmppp = FcmpPlusPlus::new(input.iter().cloned().zip(sal_proof.iter().cloned()).take(j).collect(), member_proof);
     test_cases.push((j, root, fcmppp));
+    j *= 2;
   }
 
-  let mut ed_verifier = multiexp::BatchVerifier::new(1);
-  let mut c1_verifier = generalized_bulletproofs::Generators::batch_verifier();
-  let mut c2_verifier = generalized_bulletproofs::Generators::batch_verifier();
+  // benchmark verification loop
+  let mut bench_group = c.benchmark_group("from_elem");
+  for (num_ins, root, fcmppp) in test_cases.iter() {
+    //bench_group.throughput(Throughput::Bytes(*size as u64));
+    bench_group.bench_with_input(BenchmarkId::from_parameter(num_ins), num_ins, |b, &size| {
+          let mut ed_verifier = multiexp::BatchVerifier::new(test_cases.len());
+          let mut c1_verifier = generalized_bulletproofs::Generators::batch_verifier();
+          let mut c2_verifier = generalized_bulletproofs::Generators::batch_verifier();
 
-  for (j, root, fcmppp) in test_cases.iter() {
-    fcmppp
-      .verify(
-        &mut OsRng,
-        &mut ed_verifier,
-        &mut c1_verifier,
-        &mut c2_verifier,
-        root.clone(),
-        TARGET_LAYERS, // Layers
-        signable_tx_hash,
-        L.iter().take(*j).cloned().collect(),
-      )
-      .unwrap();
+          b.iter(|| fcmppp.verify(
+            &mut OsRng, 
+            &mut ed_verifier, 
+            &mut c1_verifier, 
+            &mut c2_verifier, 
+            root.clone(), 
+            TARGET_LAYERS, 
+            signable_tx_hash,
+            L.iter().take(*num_ins).cloned().collect()));
+
+          assert!(ed_verifier.verify_vartime());
+          assert!(SELENE_GENERATORS().verify(c1_verifier));
+          assert!(HELIOS_GENERATORS().verify(c2_verifier));
+      });
   }
-
-  assert!(ed_verifier.verify_vartime());
-  assert!(SELENE_GENERATORS().verify(c1_verifier));
-  assert!(HELIOS_GENERATORS().verify(c2_verifier));
-
-/* 
-  let (path, root) = random_path_including_output(TARGET_LAYERS, );
-  let output = path.output;
-
-  let branches = Branches::new(vec![path]).unwrap();
-
-  let output_blinds = random_output_blinds(G, T, U, V);
-  let input = output_blinds.blind(&output).unwrap();
-
-  let proof = Fcmp::prove(
-    &mut OsRng,
-    &params,
-    blind_branches(&params, branches.clone(), vec![output_blinds]),
-  )
-  .unwrap();
-
-  verify_fn(100, 1, proof.clone(), &params, root, TARGET_LAYERS, &[input]);
-  verify_fn(100, 10, proof.clone(), &params, root, TARGET_LAYERS, &[input]);
-  verify_fn(100, 100, proof.clone(), &params, root, TARGET_LAYERS, &[input]);
-  */
-
-  // c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
+  bench_group.finish();
 }
 
 criterion_group!(benches, verify_benchmark);
