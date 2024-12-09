@@ -1,0 +1,40 @@
+[package]
+name = "clsag_vs_fcmppp_bench"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+monero-fcmp-plus-plus = { path = "fcmp-plus-plus/networks/monero/ringct/fcmp++" }
+fcmps = { package = "full-chain-membership-proofs", path = "fcmp-plus-plus/crypto/fcmps", default-features = false }
+#std-shims = { path = "../../common/std-shims", version = "^0.1.1", default-features = false }
+
+rand_core = { version = "0.6", default-features = false }
+
+#zeroize = { version = "^1.5", default-features = false, features = ["zeroize_derive"] }
+
+generic-array = { version = "1", default-features = false, features = ["alloc"] }
+
+#blake2 = { version = "0.10", default-features = false }
+
+multiexp = { path = "fcmp-plus-plus/crypto/multiexp", version = "0.4", default-features = false, features = ["batch"] }
+ciphersuite = { path = "fcmp-plus-plus/crypto/ciphersuite", version = "0.4", default-features = false }
+dalek-ff-group = { path = "fcmp-plus-plus/crypto/dalek-ff-group", default-features = false }
+
+ec-divisors = { path = "fcmp-plus-plus/crypto/divisors", default-features = false }
+generalized-bulletproofs = { path = "fcmp-plus-plus/crypto/generalized-bulletproofs", default-features = false }
+generalized-bulletproofs-circuit-abstraction = { path = "fcmp-plus-plus/crypto/fcmps/circuit-abstraction", default-features = false }
+generalized-bulletproofs-ec-gadgets = { path = "fcmp-plus-plus/crypto/fcmps/ec-gadgets", default-features = false }
+
+monero-generators = { path = "fcmp-plus-plus/networks/monero/generators", default-features = false }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[build-dependencies]
+cmake = "0.1"
+
+[[bench]]
+name = "benchmark"
+harness = false
+
