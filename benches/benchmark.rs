@@ -1,5 +1,5 @@
 use core::num;
-use std::hint::black_box;
+use std::{hint::black_box, time::Duration};
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkGroup, BenchmarkId};
 
 use rand_core::{OsRng, RngCore};
@@ -431,39 +431,8 @@ fn blind_branches(
   branches.blind(output_blinds.into_iter().cloned().collect(), branches_1_blinds, branches_2_blinds).unwrap()
 }
 
-#[inline(never)]
-fn verify_fn(
-  iters: usize,
-  batch: usize,
-  proof: Fcmp<Curves>,
-  root: TreeRoot<Selene, Helios>,
-  layers: usize,
-  inputs: &[Input<<Selene as Ciphersuite>::F>],
-) {
-  let mut times = vec![];
-  for _ in 0 .. iters {
-    let instant = std::time::Instant::now();
-
-    let mut verifier_1 = generalized_bulletproofs::Generators::batch_verifier();
-    let mut verifier_2 = generalized_bulletproofs::Generators::batch_verifier();
-
-    for _ in 0 .. batch {
-      proof
-        .verify(&mut OsRng, &mut verifier_1, &mut verifier_2, FCMP_PARAMS(), root, layers, inputs)
-        .unwrap();
-    }
-
-    assert!(SELENE_GENERATORS().verify(verifier_1));
-    assert!(HELIOS_GENERATORS().verify(verifier_2));
-
-    times.push((std::time::Instant::now() - instant).as_millis());
-  }
-  times.sort();
-  println!("Median time to verify {batch} proof(s) was {}ms (n={iters})", times[times.len() / 2]);
-}
-
 fn verify_benchmark(c: &mut Criterion) {
-  const MAX_NUM_PATHS: usize = 8;
+  const MAX_NUM_PATHS: usize = 1;
   const TARGET_LAYERS: usize = 8;
 
   let signable_tx_hash = [0u8; 32];
@@ -533,27 +502,31 @@ fn verify_benchmark(c: &mut Criterion) {
   }
 
   // benchmark verification loop
-  let mut bench_group = c.benchmark_group("from_elem");
+  const MEASUREMENT_TIME: Duration = std::time::Duration::from_secs(30);
+  let mut bench_group = c.benchmark_group("FCMP++ verify with N inputs");
+  bench_group.measurement_time(MEASUREMENT_TIME);
   for (num_ins, root, fcmppp) in test_cases.iter() {
     //bench_group.throughput(Throughput::Bytes(*size as u64));
     bench_group.bench_with_input(BenchmarkId::from_parameter(num_ins), num_ins, |b, &size| {
-          let mut ed_verifier = multiexp::BatchVerifier::new(test_cases.len());
-          let mut c1_verifier = generalized_bulletproofs::Generators::batch_verifier();
-          let mut c2_verifier = generalized_bulletproofs::Generators::batch_verifier();
+          b.iter(|| {
+            let mut ed_verifier = multiexp::BatchVerifier::new(1);
+            let mut c1_verifier = generalized_bulletproofs::Generators::batch_verifier();
+            let mut c2_verifier = generalized_bulletproofs::Generators::batch_verifier();
 
-          b.iter(|| fcmppp.verify(
-            &mut OsRng, 
-            &mut ed_verifier, 
-            &mut c1_verifier, 
-            &mut c2_verifier, 
-            root.clone(), 
-            TARGET_LAYERS, 
-            signable_tx_hash,
-            L.iter().take(*num_ins).cloned().collect()));
+            fcmppp.verify(
+              &mut OsRng, 
+              &mut ed_verifier, 
+              &mut c1_verifier, 
+              &mut c2_verifier, 
+              root.clone(), 
+              TARGET_LAYERS, 
+              signable_tx_hash,
+              L.iter().take(*num_ins).cloned().collect()).unwrap();
 
-          assert!(ed_verifier.verify_vartime());
-          assert!(SELENE_GENERATORS().verify(c1_verifier));
-          assert!(HELIOS_GENERATORS().verify(c2_verifier));
+            assert!(black_box(ed_verifier.verify_vartime()));
+            assert!(black_box(SELENE_GENERATORS().verify(c1_verifier)));
+            assert!(black_box(HELIOS_GENERATORS().verify(c2_verifier)));
+          });
       });
   }
   bench_group.finish();
