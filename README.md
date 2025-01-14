@@ -1,10 +1,13 @@
 # CLSAG vs FCMP++ bench suite
 
-Building benchmarks: `./build_bench.sh`
+## Instructions
 
-Running benchmarks: `./run_bench.sh`
+1. Clone repo: `git clone --recursive https://github.com/jeffro256/clsag_vs_fcmppp_bench`
+2. Pulling new commits and building benchmarks: `./build_bench.sh`
+3. Actually running benchmarks: `./run_bench.sh`
 
-You will need all the dependencies that are normally needed to build the Monero core repo: https://github.com/monero-project/monero?tab=readme-ov-file#compiling-monero-from-source
+You will need all the dependencies that are normally needed to build the Monero core repo:
+https://github.com/monero-project/monero?tab=readme-ov-file#compiling-monero-from-source
 
 You will also need a modern (>= 1.69) Rust compiler and cargo installtion.
 

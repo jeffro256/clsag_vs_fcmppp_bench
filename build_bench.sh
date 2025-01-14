@@ -2,9 +2,15 @@
 
 cd -- $(dirname -- $0)
 
-git submodule sync --recursive
+# Update repo
+git pull
+git submodule update --init --force
 
-pushd monero && make -j`nproc` && popd && cargo build --benches --profile bench && echo "done building ;)" && exit 0
+# Update and compile monero branch
+pushd monero
+git submodule update --init --force
+make -j`nproc`
+popd
 
-echo 'build failed ;('
-exit 1
+# Compile Rust benchmark
+cargo build --benches --profile bench
