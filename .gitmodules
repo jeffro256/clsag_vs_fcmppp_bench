@@ -1,7 +1,7 @@
 [submodule "monero"]
 	path = monero
 	url = https://github.com/jeffro256/monero.git
-	branch = clsag_c_api
+	branch = clsag_benchmark
 [submodule "fcmp-plus-plus"]
 	path = fcmp-plus-plus
 	url = https://github.com/kayabaNerve/fcmp-plus-plus
