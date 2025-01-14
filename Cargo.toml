@@ -2,7 +2,6 @@
 name = "clsag_vs_fcmppp_bench"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 [dependencies]
 monero-fcmp-plus-plus = { path = "fcmp-plus-plus/networks/monero/ringct/fcmp++" }
