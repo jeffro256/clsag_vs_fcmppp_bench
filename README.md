@@ -4,7 +4,7 @@
 
 1. Install Monero build dependencies: https://github.com/monero-project/monero?tab=readme-ov-file#compiling-monero-from-source
 2. Install Rust toolchain: https://rustup.rs/
-3. Clone this repo: `git clone --recursive https://github.com/jeffro256/clsag_vs_fcmppp_bench`
+3. Clone this repo: `git clone --recursive https://github.com/jeffro256/clsag_vs_fcmppp_bench; cd clsag_vs_fcmppp_bench`
 4. Pull new commits and build benchmark binaries: `./build_bench.sh`
 5. Actually run benchmarks: `./run_bench.sh`
 
