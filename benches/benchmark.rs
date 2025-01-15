@@ -434,7 +434,7 @@ fn blind_branches(
 }
 
 fn verify_benchmark(c: &mut Criterion) {
-  const MAX_NUM_PATHS: usize = 1;
+  const MAX_NUM_PATHS: usize = 16;
   const TARGET_LAYERS: usize = 8;
 
   let signable_tx_hash = [0u8; 32];

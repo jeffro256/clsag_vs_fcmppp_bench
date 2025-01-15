@@ -4,4 +4,5 @@
 	branch = clsag_benchmark
 [submodule "fcmp-plus-plus"]
 	path = fcmp-plus-plus
-	url = https://github.com/kayabaNerve/fcmp-plus-plus
+	url = https://github.com/jeffro256/fcmp-plus-plus
+	branch = increase_max_inputs
