@@ -2,7 +2,6 @@
 	path = monero
 	url = https://github.com/jeffro256/monero.git
 	branch = clsag_benchmark
-[submodule "fcmp-plus-plus"]
-	path = fcmp-plus-plus
-	url = https://github.com/jeffro256/fcmp-plus-plus
-	branch = increase_max_inputs
+[submodule "monero-oxide"]
+	path = monero-oxide
+	url = https://github.com/kayabaNerve/monero-oxide
