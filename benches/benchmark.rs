@@ -10,9 +10,10 @@ use generic_array::typenum::{Sum, Diff, Quot, U, U1, U2};
 
 use multiexp::multiexp_vartime;
 use dalek_ff_group::{Scalar, EdwardsPoint};
+use helioselene::{Helios, Selene};
 use ciphersuite::{
   group::{ff::Field, Group, GroupEncoding},
-  Ciphersuite, Ed25519, Selene, Helios,
+  Ciphersuite, Ed25519
 };
 use ec_divisors::{DivisorCurve, ScalarDecomposition};
 
@@ -20,7 +21,7 @@ use fcmps::{*, tree::hash_grow, Input, Output};
 
 use generalized_bulletproofs_ec_gadgets::DiscreteLogParameters;
 
-use monero_generators::{FCMP_U, FCMP_V, T};
+use monero_generators::{FCMP_PLUS_PLUS_U, FCMP_PLUS_PLUS_V, SELENE_HASH_INIT, HELIOS_HASH_INIT, T};
 
 use monero_fcmp_plus_plus::{*, sal::*};
 
@@ -53,15 +54,18 @@ fn random_path_including_output(
       .flat_map(|output| {
         [
           <Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().0,
+          <Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().1,
           <Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().0,
+          <Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().1,
           <Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().0,
+          <Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().1,
         ]
       })
-      .zip(SELENE_GENERATORS().g_bold_slice())
+      .zip((*SELENE_FCMP_GENERATORS).generators.g_bold_slice())
     {
       multiexp.push((scalar, *point));
     }
-    SELENE_HASH_INIT() + multiexp_vartime(&multiexp)
+    *SELENE_HASH_INIT + multiexp_vartime(&multiexp)
   });
   let mut helios_hash = None;
 
@@ -86,10 +90,10 @@ fn random_path_including_output(
 
     helios_hash = Some({
       let mut multiexp = vec![];
-      for (scalar, point) in curve_2_layer.iter().zip(HELIOS_GENERATORS().g_bold_slice()) {
+      for (scalar, point) in curve_2_layer.iter().zip((*HELIOS_FCMP_GENERATORS).generators.g_bold_slice()) {
         multiexp.push((*scalar, *point));
       }
-      HELIOS_HASH_INIT() + multiexp_vartime(&multiexp)
+      *HELIOS_HASH_INIT + multiexp_vartime(&multiexp)
     });
 
     curve_2_layers.push(curve_2_layer);
@@ -112,10 +116,10 @@ fn random_path_including_output(
 
     selene_hash = Some({
       let mut multiexp = vec![];
-      for (scalar, point) in curve_1_layer.iter().zip(SELENE_GENERATORS().g_bold_slice()) {
+      for (scalar, point) in curve_1_layer.iter().zip((*SELENE_FCMP_GENERATORS).generators.g_bold_slice()) {
         multiexp.push((*scalar, *point));
       }
-      SELENE_HASH_INIT() + multiexp_vartime(&multiexp)
+      *SELENE_HASH_INIT + multiexp_vartime(&multiexp)
     });
 
     curve_1_layers.push(curve_1_layer);
@@ -174,14 +178,17 @@ fn random_paths_including_outputs(
     let mut new_leaves_layer = vec![];
     for output in shuffled_outputs {
       new_leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().0);
+      new_leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().1);
       new_leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().0);
+      new_leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().1);
       new_leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().0);
+      new_leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().1);
     }
 
     TreeRoot::C1(
       hash_grow(
-        SELENE_GENERATORS(),
-        SELENE_HASH_INIT(),
+        &(*SELENE_FCMP_GENERATORS).generators,
+        *SELENE_HASH_INIT,
         0,
         <Selene as Ciphersuite>::F::ZERO,
         &new_leaves_layer,
@@ -194,8 +201,8 @@ fn random_paths_including_outputs(
       branch.push(
         <Selene as Ciphersuite>::G::to_xy(if let Some(branch) = path.curve_1_layers.last() {
           hash_grow(
-            SELENE_GENERATORS(),
-            SELENE_HASH_INIT(),
+            &(*SELENE_FCMP_GENERATORS).generators,
+            *SELENE_HASH_INIT,
             0,
             <Selene as Ciphersuite>::F::ZERO,
             branch,
@@ -205,13 +212,16 @@ fn random_paths_including_outputs(
           let mut leaves_layer = vec![];
           for output in &path.leaves {
             leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().0);
+            leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().1);
             leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().0);
+            leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().1);
             leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().0);
+            leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().1);
           }
 
           hash_grow(
-            SELENE_GENERATORS(),
-            SELENE_HASH_INIT(),
+            &(*SELENE_FCMP_GENERATORS).generators,
+            *SELENE_HASH_INIT,
             0,
             <Selene as Ciphersuite>::F::ZERO,
             &leaves_layer,
@@ -237,8 +247,8 @@ fn random_paths_including_outputs(
 
     TreeRoot::C2(
       hash_grow(
-        HELIOS_GENERATORS(),
-        HELIOS_HASH_INIT(),
+        &(*HELIOS_FCMP_GENERATORS).generators,
+        *HELIOS_HASH_INIT,
         0,
         <Helios as Ciphersuite>::F::ZERO,
         &shuffled_branch,
@@ -252,8 +262,8 @@ fn random_paths_including_outputs(
         <Helios as Ciphersuite>::G::to_xy({
           let branch = path.curve_2_layers.last().unwrap();
           hash_grow(
-            HELIOS_GENERATORS(),
-            HELIOS_HASH_INIT(),
+            &(*HELIOS_FCMP_GENERATORS).generators,
+            *HELIOS_HASH_INIT,
             0,
             <Helios as Ciphersuite>::F::ZERO,
             branch,
@@ -279,8 +289,8 @@ fn random_paths_including_outputs(
 
     TreeRoot::C1(
       hash_grow(
-        SELENE_GENERATORS(),
-        SELENE_HASH_INIT(),
+        &(*SELENE_FCMP_GENERATORS).generators,
+        *SELENE_HASH_INIT,
         0,
         <Selene as Ciphersuite>::F::ZERO,
         &shuffled_branch,
@@ -296,15 +306,18 @@ fn random_paths_including_outputs(
     let mut leaves_layer = vec![];
     for output in &path.leaves {
       leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().0);
+      leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.O()).unwrap().1);
       leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().0);
+      leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.I()).unwrap().1);
       leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().0);
+      leaves_layer.push(<Ed25519 as Ciphersuite>::G::to_xy(output.C()).unwrap().1);
     }
 
     let mut c1_hash = Some(
       <Selene as Ciphersuite>::G::to_xy(
         hash_grow(
-          SELENE_GENERATORS(),
-          SELENE_HASH_INIT(),
+          &(*SELENE_FCMP_GENERATORS).generators,
+          *SELENE_HASH_INIT,
           0,
           <Selene as Ciphersuite>::F::ZERO,
           &leaves_layer,
@@ -325,8 +338,8 @@ fn random_paths_including_outputs(
         c2_hash = Some(
           <Helios as Ciphersuite>::G::to_xy(
             hash_grow(
-              &HELIOS_GENERATORS(),
-              HELIOS_HASH_INIT(),
+              &(*HELIOS_FCMP_GENERATORS).generators,
+              *HELIOS_HASH_INIT,
               0,
               <Helios as Ciphersuite>::F::ZERO,
               layer,
@@ -346,8 +359,8 @@ fn random_paths_including_outputs(
         c1_hash = Some(
           <Selene as Ciphersuite>::G::to_xy(
             hash_grow(
-              SELENE_GENERATORS(),
-              SELENE_HASH_INIT(),
+              &(*SELENE_FCMP_GENERATORS).generators,
+              *SELENE_HASH_INIT,
               0,
               <Selene as Ciphersuite>::F::ZERO,
               layer,
@@ -375,34 +388,6 @@ fn random_paths_including_outputs(
   (res, root)
 }
 
-fn random_output_blinds() -> OutputBlinds<<Ed25519 as Ciphersuite>::G> {
-  let output_blinds_start = std::time::Instant::now();
-  let res = OutputBlinds::new(
-    OBlind::new(
-    EdwardsPoint(T()),
-      ScalarDecomposition::new(<Ed25519 as Ciphersuite>::F::random(&mut OsRng)).unwrap(),
-    ),
-    IBlind::new(
-      EdwardsPoint(FCMP_U()),
-      EdwardsPoint(FCMP_V()),
-      ScalarDecomposition::new(<Ed25519 as Ciphersuite>::F::random(&mut OsRng)).unwrap(),
-    ),
-    IBlindBlind::new(
-      EdwardsPoint(T()),
-      ScalarDecomposition::new(<Ed25519 as Ciphersuite>::F::random(&mut OsRng)).unwrap(),
-    ),
-    CBlind::new(
-      EdwardsPoint::generator(),
-      ScalarDecomposition::new(<Ed25519 as Ciphersuite>::F::random(&mut OsRng)).unwrap(),
-    ),
-  );
-  println!(
-    "Output blinds took {}ms to calculate",
-    (std::time::Instant::now() - output_blinds_start).as_millis()
-  );
-  res
-}
-
 fn blind_branches(
   branches: Branches<Curves>,
   output_blinds: &[OutputBlinds<<Ed25519 as Ciphersuite>::G>],
@@ -411,7 +396,7 @@ fn blind_branches(
   let mut branches_1_blinds = vec![];
   for _ in 0 .. branches.necessary_c1_blinds() {
     branches_1_blinds.push(BranchBlind::<<Selene as Ciphersuite>::G>::new(
-      SELENE_GENERATORS().h(),
+      (*SELENE_FCMP_GENERATORS).generators.h(),
       ScalarDecomposition::new(<Selene as Ciphersuite>::F::random(&mut OsRng)).unwrap(),
     ));
   }
@@ -419,7 +404,7 @@ fn blind_branches(
   let mut branches_2_blinds = vec![];
   for _ in 0 .. branches.necessary_c2_blinds() {
     branches_2_blinds.push(BranchBlind::<<Helios as Ciphersuite>::G>::new(
-      HELIOS_GENERATORS().h(),
+      (*HELIOS_FCMP_GENERATORS).generators.h(),
       ScalarDecomposition::new(<Helios as Ciphersuite>::F::random(&mut OsRng)).unwrap(),
     ));
   }
@@ -456,7 +441,7 @@ fn verify_benchmark(c: &mut Criterion) {
     let y = Scalar::random(&mut OsRng);
     O_x_openings.push(x);
     O_y_openings.push(y);
-    O.push(EdwardsPoint::generator() * x + EdwardsPoint(T()) * y);
+    O.push(EdwardsPoint::generator() * x + EdwardsPoint(*T) * y);
     I.push(EdwardsPoint::random(&mut OsRng));
     C.push(EdwardsPoint::random(&mut OsRng));
     L.push(*I.last().unwrap() * x);
@@ -464,23 +449,23 @@ fn verify_benchmark(c: &mut Criterion) {
     let rerando = RerandomizedOutput::new(&mut OsRng, *output.last().unwrap());
     rerandomized_output.push(rerando.clone());
     input.push(rerando.input());
-    let opening = OpenedInputTuple::open(rerando.clone(), &x, &y).unwrap();
+    let opening = OpenedInputTuple::open(&rerando.clone(), &x, &y).unwrap();
     let (L_, spend_auth_and_linkability) =
-      SpendAuthAndLinkability::prove(&mut OsRng, signable_tx_hash, opening);
+      SpendAuthAndLinkability::prove(&mut OsRng, signable_tx_hash, &opening);
     assert_eq!(&L_, L.last().unwrap());
     sal_proof.push(spend_auth_and_linkability);
     output_blind.push(OutputBlinds::new(
       OBlind::new(
-        EdwardsPoint(T()),
+        EdwardsPoint(*T),
         ScalarDecomposition::new(rerando.o_blind()).unwrap(),
       ),
       IBlind::new(
-        EdwardsPoint(FCMP_U()),
-        EdwardsPoint(FCMP_V()),
+        EdwardsPoint(*FCMP_PLUS_PLUS_U),
+        EdwardsPoint(*FCMP_PLUS_PLUS_V),
         ScalarDecomposition::new(rerando.i_blind()).unwrap(),
       ),
       IBlindBlind::new(
-        EdwardsPoint(T()),
+        EdwardsPoint(*T),
         ScalarDecomposition::new(rerando.i_blind_blind()).unwrap(),
       ),
       CBlind::new(
@@ -497,7 +482,7 @@ fn verify_benchmark(c: &mut Criterion) {
     let (paths, root) = random_paths_including_outputs(TARGET_LAYERS, &output[..j]);
     let branches = Branches::new(paths).unwrap();
     let blinded_branches = blind_branches(branches, &output_blind[..j]);
-    let member_proof = Fcmp::prove(&mut OsRng, FCMP_PARAMS(), blinded_branches).unwrap();
+    let member_proof = Fcmp::prove(&mut OsRng, &*FCMP_PARAMS, blinded_branches).unwrap();
     let fcmppp = FcmpPlusPlus::new(input.iter().cloned().zip(sal_proof.iter().cloned()).take(j).collect(), member_proof);
     test_cases.push((j, root, fcmppp));
     j *= 2;
@@ -526,8 +511,8 @@ fn verify_benchmark(c: &mut Criterion) {
               L.iter().take(*num_ins).cloned().collect()).unwrap();
 
             assert!(black_box(ed_verifier.verify_vartime()));
-            assert!(black_box(SELENE_GENERATORS().verify(c1_verifier)));
-            assert!(black_box(HELIOS_GENERATORS().verify(c2_verifier)));
+            assert!(black_box((*SELENE_FCMP_GENERATORS).generators.verify(c1_verifier)));
+            assert!(black_box((*HELIOS_FCMP_GENERATORS).generators.verify(c2_verifier)));
           });
       });
   }
